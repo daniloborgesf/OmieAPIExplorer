@@ -1,4 +1,3 @@
-
 {
   "name": "Omie API Explorer",
   "short_name": "OmieExplorer",
@@ -6,8 +5,8 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#001c22",
-  "theme_color": "#001c22",
+  "background_color": "#000d0f",
+  "theme_color": "#000d0f",
   "icons": [
     {
       "src": "https://cdn-icons-png.flaticon.com/512/906/906341.png",

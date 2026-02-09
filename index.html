@@ -1,16 +1,40 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#000d0f">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    
+    <!-- Meta tags de PWA Modernas -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%2300f2ff;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23004b57;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='45' fill='none' stroke='url(%23g)' stroke-width='8'/%3E%3Cpath d='M30 50 L45 65 L70 35' fill='none' stroke='url(%23g)' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <meta name="apple-mobile-web-app-title" content="Omie Explorer">
+    
+    <!-- Favicon SVG Moderno -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%2300f2ff;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23004b57;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='45' fill='none' stroke='url(%23g)' stroke-width='8'/%3E%3Cpath d='M35 50 L45 60 L65 40' fill='none' stroke='url(%23g)' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    
     <link rel="manifest" href="./manifest.json">
     <title>Omie API Explorer | Petroleum</title>
+    
+    <!-- Tailwind via CDN com Configuração de Produção Silenciosa -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              petroleum: {
+                DEFAULT: '#002d35',
+                dark: '#000d0f',
+                light: '#004b57',
+              },
+              accent: '#00f2ff',
+            }
+          }
+        }
+      }
+    </script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -31,7 +55,6 @@
             width: 100%;
             overflow-x: hidden;
         }
-        /* Scrollbar customizada Tom Petróleo */
         ::-webkit-scrollbar {
             width: 5px;
             height: 5px;
@@ -52,11 +75,7 @@
         }
         .petroleum-gradient {
             background: radial-gradient(circle at top right, #002d35 0%, #000d0f 100%);
-        }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            background-attachment: fixed;
         }
     </style>
 <script type="importmap">
@@ -71,16 +90,22 @@
 }
 </script>
 </head>
-<body class="petroleum-gradient">
+<body class="petroleum-gradient text-slate-300">
     <div id="root"></div>
     <script>
+        // Registro de Service Worker com Verificação de Caminho Relativo Robustos
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js')
-                    .then(reg => console.log('SW Active'))
-                    .catch(err => console.log('SW Error', err));
+                const swPath = window.location.pathname.endsWith('/') 
+                    ? window.location.pathname + 'service-worker.js'
+                    : window.location.pathname.split('/').slice(0, -1).join('/') + '/service-worker.js';
+                
+                navigator.serviceWorker.register('./service-worker.js', { scope: './' })
+                    .then(reg => console.log('SW Registered'))
+                    .catch(err => console.warn('SW Error:', err));
             });
         }
     </script>
+    <script type="module" src="./index.tsx"></script>
 </body>
 </html>
