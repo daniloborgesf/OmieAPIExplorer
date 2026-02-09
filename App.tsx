@@ -29,12 +29,27 @@ import {
   Github,
   Linkedin,
   Lock,
-  Sparkles
+  Sparkles,
+  Layers,
+  Cpu
 } from 'lucide-react';
 import { OmieCredentials, ConnectionLog, ServiceDefinition, CredentialProfile, LogFilterStatus } from './types';
-import { OMIE_SERVICES } from './constants';
+import { OMIE_SERVICES, THEME_COLORS } from './constants';
 import { callOmieApi } from './services/omieService';
 import { performMaintenance, clearSensitiveData } from './services/maintenanceService';
+
+const LogoIcon = () => (
+  <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-[0_0_8px_rgba(0,242,255,0.4)]">
+    <circle cx="50" cy="50" r="45" stroke="#00f2ff" strokeWidth="4" />
+    <path d="M50 20C50 20 30 40 30 55C30 66.0457 38.9543 75 50 75C61.0457 75 70 66.0457 70 55C70 40 50 20 50 20Z" fill="url(#paint0_linear_logo)" />
+    <defs>
+      <linearGradient id="paint0_linear_logo" x1="50" y1="20" x2="50" y2="75" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#00f2ff" />
+        <stop offset="1" stopColor="#004b57" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
 
 const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
@@ -67,12 +82,10 @@ const App: React.FC = () => {
   const [logFilterStatus, setLogFilterStatus] = useState<LogFilterStatus>('all');
   const [logSearchQuery, setLogSearchQuery] = useState('');
 
-  // Rotina de Manutenção ao Carregar
   useEffect(() => {
     performMaintenance();
   }, []);
 
-  // Persistência de Logs com Auto-Save
   useEffect(() => {
     localStorage.setItem('omie_connection_logs', JSON.stringify(logs));
   }, [logs]);
@@ -93,10 +106,7 @@ const App: React.FC = () => {
       status,
       message
     };
-    setLogs(prev => {
-      const updated = [newLog, ...prev];
-      return updated.slice(0, 100); // Garante limite interno de 100 logs
-    });
+    setLogs(prev => [newLog, ...prev].slice(0, 100));
   };
 
   const saveCredentials = () => {
@@ -107,11 +117,11 @@ const App: React.FC = () => {
     localStorage.setItem('omie_use_proxy', String(cleanCreds.useProxy));
     localStorage.setItem('omie_proxy_url', cleanCreds.proxyUrl || '');
     setShowSettings(false);
-    addLog('SISTEMA', 'success', 'Configurações de rede sincronizadas.');
+    addLog('SISTEMA', 'success', 'Sincronização de segurança concluída.');
   };
 
   const handleClearAppData = () => {
-    if (window.confirm("Atenção: Todos os perfis, chaves e logs serão destruídos permanentemente. Continuar?")) {
+    if (window.confirm("Isso apagará todas as configurações e chaves. Deseja continuar?")) {
       clearSensitiveData();
       window.location.reload();
     }
@@ -127,12 +137,12 @@ const App: React.FC = () => {
     try {
       parsedParam = JSON.parse(jsonParam);
     } catch (e) {
-      addLog('JSON_ERRO', 'error', 'Sintaxe de parâmetros inválida.');
+      addLog('JSON_ERRO', 'error', 'Formatação JSON inválida.');
       return;
     }
 
     setIsTesting(true);
-    addLog(currentService.call, 'pending', `Iniciando requisição...`);
+    addLog(currentService.call, 'pending', `Conectando ao gateway Omie...`);
     
     const result = await callOmieApi(credentials, currentService.endpoint, currentService.call, parsedParam);
     setLastResponse(result);
@@ -140,9 +150,9 @@ const App: React.FC = () => {
     if (result.error) {
       addLog(currentService.call, 'error', result.error.description);
     } else if (result.faultstring) {
-      addLog(currentService.call, 'error', `Falha Omie: ${result.faultstring}`);
+      addLog(currentService.call, 'error', `Erro ERP: ${result.faultstring}`);
     } else {
-      addLog(currentService.call, 'success', 'Conexão estabelecida com sucesso.');
+      addLog(currentService.call, 'success', 'Comunicação bem-sucedida.');
     }
     setIsTesting(false);
   };
@@ -170,325 +180,346 @@ const App: React.FC = () => {
   }, [currentService, credentials, jsonParam]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#001c22] text-slate-200 font-sans selection:bg-[#07575B] max-w-full overflow-x-hidden">
-      {/* Background Decorator Otimizado */}
-      <div className="fixed inset-0 pointer-events-none opacity-5 overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-cyan-500 rounded-full blur-[160px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-900 rounded-full blur-[180px]" />
+    <div className="flex flex-col min-h-screen bg-[#000d0f] text-slate-300 font-sans selection:bg-[#00f2ff33] max-w-full overflow-x-hidden">
+      {/* Background Neon Subtle */}
+      <div className="fixed inset-0 pointer-events-none opacity-10 overflow-hidden">
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#00f2ff] rounded-full blur-[200px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[70%] h-[70%] bg-[#004b57] rounded-full blur-[220px]" />
       </div>
 
-      <header className="sticky top-0 z-50 bg-[#001c22]/95 backdrop-blur-xl border-b border-white/5 px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2 sm:gap-3 truncate mr-2 min-w-0">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-[#004b57] to-[#001c22] rounded-lg sm:rounded-xl flex items-center justify-center border border-white/10 shadow-lg shrink-0">
-            <Database className="text-cyan-400 w-4 h-4 sm:w-5 sm:h-5" />
+      <header className="sticky top-0 z-50 bg-[#000d0f]/80 backdrop-blur-2xl border-b border-white/5 px-4 sm:px-8 h-16 sm:h-20 flex items-center justify-between shadow-2xl">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <LogoIcon />
+          <div className="flex flex-col leading-tight truncate">
+            <h1 className="text-sm sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              Omie <span className="text-[#00f2ff] font-light tracking-widest uppercase text-[10px] sm:text-xs">Explorer</span>
+            </h1>
+            <span className="text-[8px] sm:text-[10px] text-slate-500 uppercase font-black tracking-[0.2em]">Petroleum Edition</span>
           </div>
-          <h1 className="text-[13px] sm:text-lg font-bold tracking-tight truncate">Omie <span className="text-cyan-500 italic">API Explorer</span></h1>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-cyan-500/5 rounded-full border border-cyan-500/10 mr-2">
-            <Sparkles className="w-3 h-3 text-cyan-500" />
-            <span className="text-[8px] font-black uppercase tracking-widest text-cyan-600">Auto-Maintenance Active</span>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-white/5 rounded-2xl border border-white/5">
+            <Cpu className="w-3 h-3 text-[#00f2ff]" />
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Edge System Active</span>
           </div>
-          {credentials.useProxy && lastResponse?.error?.code === "403" && (
-            <button 
-              onClick={() => window.open(credentials.proxyUrl, '_blank')}
-              className="px-2 sm:px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[9px] sm:text-[10px] font-bold rounded-lg hover:bg-amber-500/20 transition-all flex items-center gap-1.5 animate-pulse"
-            >
-              <AlertCircle className="w-3 h-3" /> <span className="hidden xs:inline">ATIVAR</span> PROXY
-            </button>
-          )}
-          <button onClick={() => setShowSettings(true)} className="p-2 sm:p-2.5 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group">
-            <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-hover:rotate-90 transition-transform duration-500" />
+          <button onClick={() => setShowSettings(true)} className="p-2.5 sm:p-3 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all group active:scale-90">
+            <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-hover:text-[#00f2ff] group-hover:rotate-45 transition-all" />
           </button>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 relative z-10 overflow-hidden">
-        {/* Lado Esquerdo */}
-        <div className="lg:col-span-4 space-y-6 w-full min-w-0">
-          <section className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 backdrop-blur-md shadow-2xl">
-            <h2 className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-500 mb-4 sm:mb-6 flex items-center gap-2">
-              <Code className="w-3.5 h-3.5 sm:w-4 h-4" /> Chamada de Serviço
-            </h2>
-            <div className="space-y-2 mb-6">
+      <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 relative z-10">
+        
+        {/* Lado Esquerdo - Configurações */}
+        <div className="lg:col-span-5 space-y-8 w-full min-w-0">
+          <section className="bg-white/[0.02] border border-white/5 rounded-[2rem] p-6 sm:p-8 backdrop-blur-3xl shadow-2xl group hover:border-[#00f2ff11] transition-all duration-500">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#00f2ff] flex items-center gap-2">
+                <Layers className="w-4 h-4" /> Core Service
+              </h2>
+              <div className="w-2 h-2 rounded-full bg-[#00f2ff] animate-ping" />
+            </div>
+
+            <div className="space-y-4 mb-8">
               {OMIE_SERVICES.map(service => (
-                <div key={service.name} className="bg-cyan-500/10 border border-cyan-500/30 p-3 sm:p-4 rounded-xl sm:rounded-2xl text-white shadow-inner">
-                  <div className="text-[9px] sm:text-[10px] font-mono opacity-60 uppercase truncate tracking-tighter">{service.call}</div>
-                  <div className="text-xs sm:text-sm font-bold truncate">{service.name}</div>
-                </div>
+                <button 
+                  key={service.name} 
+                  onClick={() => setCurrentService(service)}
+                  className={`w-full text-left p-4 sm:p-5 rounded-2xl border transition-all relative overflow-hidden group ${currentService.call === service.call ? 'bg-[#00f2ff11] border-[#00f2ff33] ring-1 ring-[#00f2ff22]' : 'bg-white/5 border-white/5 hover:bg-white/[0.08]'}`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] font-mono font-bold text-[#00f2ff]/60 uppercase tracking-tighter">{service.call}</span>
+                    {currentService.call === service.call && <CheckCircle2 className="w-3 h-3 text-[#00f2ff]" />}
+                  </div>
+                  <div className={`text-xs sm:text-sm font-bold ${currentService.call === service.call ? 'text-white' : 'text-slate-400'}`}>{service.name}</div>
+                </button>
               ))}
             </div>
-            <div className="space-y-3">
-              <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block px-1">JSON Body</label>
-              <textarea 
-                value={jsonParam} 
-                onChange={(e) => setJsonParam(e.target.value)} 
-                rows={9} 
-                className="w-full bg-black/40 border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-5 font-mono text-[10px] sm:text-[11px] focus:ring-1 focus:ring-cyan-500 focus:outline-none custom-scrollbar transition-all leading-relaxed" 
-              />
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Payload Parâmetros</label>
+                <div className="flex items-center gap-2">
+                   <span className="text-[8px] text-emerald-500 font-bold uppercase tracking-tighter">Valid JSON</span>
+                </div>
+              </div>
+              <div className="relative group">
+                <textarea 
+                  value={jsonParam} 
+                  onChange={(e) => setJsonParam(e.target.value)} 
+                  rows={10} 
+                  className="w-full bg-black/60 border border-white/5 rounded-2xl p-5 sm:p-6 font-mono text-[10px] sm:text-[12px] focus:ring-1 focus:ring-[#00f2ff] focus:outline-none custom-scrollbar transition-all leading-relaxed text-cyan-50/80 shadow-inner group-hover:border-white/10" 
+                />
+              </div>
             </div>
+
             <button 
               onClick={handlePing} 
               disabled={isTesting} 
-              className="w-full mt-6 py-3 sm:py-4 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-3 transition-all shadow-xl shadow-cyan-900/40 active:scale-95 group"
+              className="w-full mt-8 py-4 sm:py-5 bg-gradient-to-r from-[#004b57] to-[#00f2ff] hover:brightness-110 disabled:opacity-50 text-[#000d0f] rounded-2xl sm:rounded-3xl text-xs sm:text-sm font-black flex items-center justify-center gap-4 transition-all shadow-[0_10px_30px_rgba(0,242,255,0.2)] active:scale-[0.98] uppercase tracking-[0.2em]"
             >
-              {isTesting ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
-              {isTesting ? 'Transmitindo...' : 'Enviar Requisição'}
+              {isTesting ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5 fill-current" />}
+              {isTesting ? 'Sincronizando...' : 'Execute Request'}
             </button>
           </section>
 
-          <section className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6">
-            <h3 className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <User className="w-3.5 h-3.5" /> Perfis Salvos
+          <section className="bg-white/[0.02] border border-white/5 rounded-[2rem] p-6 sm:p-8">
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-3">
+              <User className="w-4 h-4 text-[#00f2ff]" /> Cloud Profiles
             </h3>
-            <div className="space-y-2 max-h-[160px] overflow-y-auto custom-scrollbar pr-1">
+            <div className="grid grid-cols-1 gap-3">
               {profiles.map(p => (
                 <button 
                   key={p.id} 
-                  onClick={() => { setCredentials(p); addLog('PERFIL', 'system', `Perfil "${p.name}" selecionado.`); }} 
-                  className="w-full text-left bg-white/5 hover:bg-white/10 p-3 rounded-xl text-[10px] sm:text-xs transition-all flex items-center justify-between border border-transparent hover:border-white/10 group"
+                  onClick={() => { setCredentials(p); addLog('IDENTITY', 'system', `Chaves do perfil "${p.name}" carregadas.`); }} 
+                  className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl text-[11px] sm:text-xs font-medium transition-all group"
                 >
-                  <span className="truncate font-medium">{p.name}</span>
-                  <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  <span className="truncate pr-4">{p.name}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[8px] text-slate-600 font-mono">Encrypted</span>
+                    <ChevronRight className="w-3 h-3 text-[#00f2ff] opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+                  </div>
                 </button>
               ))}
-              {profiles.length === 0 && <p className="text-[9px] text-slate-700 text-center py-4 border border-dashed border-white/5 rounded-xl">Nenhum perfil em nuvem.</p>}
+              {profiles.length === 0 && <div className="text-center py-8 border-2 border-dashed border-white/5 rounded-2xl text-[10px] text-slate-700 uppercase tracking-widest font-bold">Safe Storage Empty</div>}
             </div>
           </section>
         </div>
 
-        {/* Lado Direito */}
-        <div className="lg:col-span-8 space-y-6 w-full min-w-0">
-          <div className="bg-[#002d35]/40 border border-cyan-500/20 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl">
-            <div className="bg-cyan-500/10 px-4 sm:px-6 py-3 border-b border-cyan-500/20 flex items-center justify-between">
-              <span className="text-[9px] sm:text-[10px] font-bold text-cyan-400 flex items-center gap-2 uppercase tracking-[0.2em]">
-                <Terminal className="w-3.5 h-3.5" /> Outgoing Payload
+        {/* Lado Direito - Resultados */}
+        <div className="lg:col-span-7 space-y-8 w-full min-w-0">
+          
+          <div className="bg-black/40 border border-[#00f2ff11] rounded-[2rem] overflow-hidden shadow-2xl relative">
+            <div className="bg-[#00f2ff]/5 px-6 sm:px-8 py-4 border-b border-white/5 flex items-center justify-between">
+              <span className="text-[10px] font-black text-[#00f2ff] flex items-center gap-3 uppercase tracking-[0.3em]">
+                <Terminal className="w-4 h-4" /> Gateway Debug
               </span>
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                <span className="text-[8px] sm:text-[9px] text-cyan-700 font-mono font-bold uppercase">Encrypted View</span>
+              <div className="flex items-center gap-3 bg-[#000d0f] px-3 py-1 rounded-full border border-[#00f2ff22]">
+                <Globe className={`w-3 h-3 ${credentials.useProxy ? 'text-[#00f2ff]' : 'text-slate-700'}`} />
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{credentials.useProxy ? 'Relay Active' : 'Direct Call'}</span>
               </div>
             </div>
-            <div className="p-4 sm:p-5 font-mono text-[9px] sm:text-[11px] overflow-x-auto max-h-[160px] text-cyan-200/70 custom-scrollbar leading-relaxed">
-              <pre className="whitespace-pre-wrap break-all">{outgoingPayloadPreview}</pre>
+            <div className="p-6 sm:p-8 font-mono text-[10px] sm:text-[12px] overflow-x-auto max-h-[220px] text-cyan-200/50 custom-scrollbar leading-relaxed">
+              <pre className="whitespace-pre-wrap">{outgoingPayloadPreview}</pre>
             </div>
           </div>
 
-          <div className="bg-black/60 border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl backdrop-blur-lg">
-            <div className="bg-white/5 px-4 sm:px-6 py-3 border-b border-white/5 flex items-center justify-between">
-              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <Activity className="w-3.5 h-3.5" /> Incoming Response
+          <div className="bg-[#000d0f] border border-white/5 rounded-[2.5rem] overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] min-h-[400px] sm:min-h-[500px] flex flex-col relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#00f2ff] opacity-[0.03] blur-[60px]" />
+            <div className="px-6 sm:px-10 py-5 sm:py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-3">
+                <Activity className="w-4 h-4 text-[#00f2ff]" /> Data Response
               </span>
               {lastResponse?.error && (
-                <div className="flex items-center gap-1.5 text-red-400 bg-red-500/10 px-2 sm:px-3 py-1 rounded-full border border-red-500/20">
-                  <AlertCircle className="w-3 h-3" />
-                  <span className="text-[8px] sm:text-[9px] font-bold uppercase">{lastResponse.error.code}</span>
+                <div className="flex items-center gap-2 text-red-400 bg-red-500/10 px-3 py-1.5 rounded-full border border-red-500/20 text-[10px] font-black uppercase tracking-tighter">
+                  <AlertCircle className="w-3.5 h-3.5" /> {lastResponse.error.code}
                 </div>
               )}
             </div>
-            <div className="p-4 sm:p-8 font-mono text-[9px] sm:text-[11px] overflow-x-auto min-h-[220px] sm:min-h-[300px] max-h-[450px] text-emerald-400/90 custom-scrollbar leading-relaxed">
+            <div className="flex-1 p-6 sm:p-10 font-mono text-[11px] sm:text-[13px] overflow-x-auto text-[#00f2ff] custom-scrollbar leading-relaxed">
               {lastResponse ? (
-                <pre className="whitespace-pre-wrap break-all">{JSON.stringify(lastResponse, null, 2)}</pre>
+                <pre className="whitespace-pre-wrap">{JSON.stringify(lastResponse, null, 2)}</pre>
               ) : (
-                <div className="h-full min-h-[150px] flex flex-col items-center justify-center text-slate-700 opacity-20">
-                  <RefreshCcw className="w-10 h-10 mb-4 animate-pulse" />
-                  <p className="text-[9px] font-bold uppercase tracking-[0.4em]">Listening for Data...</p>
+                <div className="h-full flex flex-col items-center justify-center opacity-10">
+                  <LogoIcon />
+                  <p className="mt-6 text-[11px] font-black uppercase tracking-[0.5em] text-white">Listening for Endpoint Activity</p>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-slate-500 flex items-center gap-2 uppercase text-[9px] sm:text-[10px] tracking-[0.2em]">
-                <History className="w-3.5 h-3.5" /> Recent Events
+          <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] p-6 sm:p-8 shadow-xl">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="font-black text-slate-500 flex items-center gap-3 uppercase text-[10px] tracking-[0.3em]">
+                <History className="w-4 h-4 text-[#00f2ff]" /> Trace Logs
               </h3>
-              <button onClick={() => setShowHistoryModal(true)} className="text-[9px] font-bold text-cyan-500 hover:text-cyan-400 transition-colors uppercase border-b border-cyan-500/10">Full History</button>
+              <button onClick={() => setShowHistoryModal(true)} className="text-[10px] font-black text-[#00f2ff] hover:brightness-125 transition-all uppercase tracking-widest border-b border-[#00f2ff33]">Explore All</button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {logs.slice(0, 3).map(log => (
-                <div key={log.id} className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5 group transition-all min-w-0">
-                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${log.status === 'success' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : log.status === 'error' ? 'bg-red-500' : 'bg-cyan-500'}`} />
+                <div key={log.id} className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5 group hover:bg-white/[0.08] transition-all">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${log.status === 'success' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.4)]' : log.status === 'error' ? 'bg-red-500' : 'bg-[#00f2ff]'}`} />
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-0.5">
-                      <span className="text-[9px] font-mono font-bold text-slate-300 uppercase truncate">{log.method}</span>
-                      <span className="text-[8px] text-slate-600 font-medium shrink-0 ml-2">{log.timestamp instanceof Date ? log.timestamp.toLocaleTimeString() : new Date(log.timestamp).toLocaleTimeString()}</span>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-mono font-black text-white uppercase truncate tracking-tight">{log.method}</span>
+                      <span className="text-[9px] text-slate-600 font-bold shrink-0 ml-4">{new Date(log.timestamp).toLocaleTimeString()}</span>
                     </div>
-                    <p className="text-[10px] text-slate-500 truncate leading-tight">{log.message}</p>
+                    <p className="text-[11px] text-slate-500 truncate font-medium">{log.message}</p>
                   </div>
                 </div>
               ))}
-              {logs.length === 0 && <p className="text-[8px] text-slate-700 text-center py-2 uppercase tracking-widest">No local records</p>}
+              {logs.length === 0 && <div className="py-4 text-center text-[10px] font-bold text-slate-800 uppercase tracking-widest">Quiet Atmosphere</div>}
             </div>
           </div>
         </div>
       </main>
 
-      {/* Settings Modal */}
+      {/* Settings Modal - Redesign */}
       {showSettings && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-[#001c22]/95 backdrop-blur-2xl animate-in fade-in duration-300">
-          <div className="bg-slate-900 border border-white/10 rounded-2xl sm:rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl transform animate-in zoom-in duration-300">
-            <div className="p-6 sm:p-10 space-y-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-[#000d0f]/95 backdrop-blur-3xl animate-in fade-in duration-300">
+          <div className="bg-[#00151a] border border-white/10 rounded-[3rem] w-full max-w-lg overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] transform animate-in zoom-in duration-300 relative">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00f2ff] to-transparent" />
+            
+            <div className="p-8 sm:p-12 space-y-8 max-h-[85vh] overflow-y-auto custom-scrollbar">
               <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">System Settings</h2>
-                  <p className="text-[9px] text-slate-500 mt-1 uppercase tracking-[0.2em] font-bold">Cloud Deployment Config</p>
+                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tighter">Gateway Access</h2>
+                  <p className="text-[10px] text-slate-500 mt-2 uppercase tracking-[0.4em] font-black">Secure Connectivity Config</p>
                 </div>
-                <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white transition-colors bg-white/5 p-2 rounded-full shrink-0"><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowSettings(false)} className="text-slate-600 hover:text-white transition-colors bg-white/5 p-3 rounded-2xl shrink-0 active:scale-90"><X className="w-6 h-6" /></button>
               </div>
 
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <h4 className="text-[10px] font-bold text-cyan-600 uppercase tracking-widest border-b border-white/5 pb-2 flex items-center gap-2">
-                    <Lock className="w-3 h-3" /> Credentials
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="group">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block px-1 group-focus-within:text-cyan-500 transition-colors">App Key</label>
-                      <div className="relative">
-                        <input type={showAppKey ? "text" : "password"} value={credentials.appKey} onChange={e => setCredentials(c => ({...c, appKey: e.target.value}))} className="w-full bg-black/40 border border-white/10 rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm focus:ring-1 focus:ring-cyan-500 outline-none transition-all placeholder-slate-800" placeholder="Insira sua App Key" />
-                        <button onClick={() => setShowAppKey(!showAppKey)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 shrink-0">{showAppKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
-                      </div>
+              <div className="space-y-8">
+                <div className="space-y-6">
+                  <div className="group">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 block px-1 group-focus-within:text-[#00f2ff] transition-colors">App Key (Omie)</label>
+                    <div className="relative">
+                      <input type={showAppKey ? "text" : "password"} value={credentials.appKey} onChange={e => setCredentials(c => ({...c, appKey: e.target.value}))} className="w-full bg-[#000d0f] border border-white/5 rounded-2xl px-6 py-4 text-sm focus:ring-1 focus:ring-[#00f2ff] outline-none transition-all placeholder:text-slate-800 font-mono" placeholder="Enter API Public Key" />
+                      <button onClick={() => setShowAppKey(!showAppKey)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-600 hover:text-white transition-all">{showAppKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</button>
                     </div>
-                    <div className="group">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block px-1 group-focus-within:text-cyan-500 transition-colors">App Secret</label>
-                      <div className="relative">
-                        <input type={showAppSecret ? "text" : "password"} value={credentials.appSecret} onChange={e => setCredentials(c => ({...c, appSecret: e.target.value}))} className="w-full bg-black/40 border border-white/10 rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm focus:ring-1 focus:ring-cyan-500 outline-none transition-all placeholder-slate-800" placeholder="Insira sua App Secret" />
-                        <button onClick={() => setShowAppSecret(!showAppSecret)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 shrink-0">{showAppSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
-                      </div>
+                  </div>
+                  <div className="group">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 block px-1 group-focus-within:text-[#00f2ff] transition-colors">App Secret (Omie)</label>
+                    <div className="relative">
+                      <input type={showAppSecret ? "text" : "password"} value={credentials.appSecret} onChange={e => setCredentials(c => ({...c, appSecret: e.target.value}))} className="w-full bg-[#000d0f] border border-white/5 rounded-2xl px-6 py-4 text-sm focus:ring-1 focus:ring-[#00f2ff] outline-none transition-all placeholder:text-slate-800 font-mono" placeholder="Enter Private Token" />
+                      <button onClick={() => setShowAppSecret(!showAppSecret)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-600 hover:text-white transition-all">{showAppSecret ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</button>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-4 pt-4 border-t border-white/5">
+                <div className="space-y-6 pt-6 border-t border-white/5">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-[10px] font-bold text-cyan-600 uppercase tracking-widest flex items-center gap-2">
-                      <Globe className="w-3 h-3" /> Proxy Relay (CORS)
-                    </h4>
+                    <div className="flex flex-col">
+                      <h4 className="text-[11px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-3">
+                        <Globe className="w-4 h-4 text-[#00f2ff]" /> CORS Relay Gateway
+                      </h4>
+                      <p className="text-[9px] text-slate-600 mt-1">Ative para evitar bloqueios de navegador.</p>
+                    </div>
                     <button 
                       onClick={() => setCredentials(c => ({...c, useProxy: !c.useProxy}))}
-                      className={`w-10 h-5 sm:h-6 rounded-full transition-all relative shrink-0 ${credentials.useProxy ? 'bg-cyan-600' : 'bg-slate-700'}`}
+                      className={`w-14 h-7 rounded-full transition-all relative shrink-0 shadow-lg ${credentials.useProxy ? 'bg-[#00f2ff]' : 'bg-slate-800'}`}
                     >
-                      <div className={`absolute top-0.5 sm:top-1 w-4 h-4 rounded-full bg-white transition-all ${credentials.useProxy ? 'left-5 sm:left-7' : 'left-0.5 sm:left-1'}`} />
+                      <div className={`absolute top-1 w-5 h-5 rounded-full bg-[#00151a] transition-all shadow-md ${credentials.useProxy ? 'left-8' : 'left-1'}`} />
                     </button>
                   </div>
                   
                   {credentials.useProxy && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <div className="bg-cyan-500/5 border border-cyan-500/10 p-4 rounded-xl sm:rounded-2xl space-y-3">
-                        <div className="flex gap-2 sm:gap-3">
-                          <Info className="w-4 h-4 text-cyan-500 shrink-0" />
-                          <p className="text-[9px] text-slate-400 leading-relaxed italic">
-                            O proxy permite que o navegador ignore bloqueios de segurança do servidor Omie.
-                          </p>
-                        </div>
-                        <button 
+                    <div className="bg-[#00f2ff]/5 border border-[#00f2ff22] p-5 rounded-3xl space-y-4 animate-in fade-in slide-in-from-top-2">
+                       <p className="text-[10px] text-slate-400 leading-relaxed font-medium">O gateway temporário requer autorização manual no navegador.</p>
+                       <button 
                           onClick={() => window.open(credentials.proxyUrl, '_blank')}
-                          className="w-full py-2.5 bg-cyan-600/10 hover:bg-cyan-600/20 text-cyan-500 text-[9px] font-bold rounded-xl border border-cyan-500/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+                          className="w-full py-3 bg-[#00f2ff11] hover:bg-[#00f2ff22] text-[#00f2ff] text-[10px] font-black rounded-xl border border-[#00f2ff33] flex items-center justify-center gap-3 transition-all active:scale-95"
                         >
-                          <ExternalLink className="w-3 h-3" /> AUTHORIZE PROXY RELAY
+                          <ExternalLink className="w-4 h-4" /> AUTHORIZE GATEWAY RELAY
                         </button>
-                      </div>
                     </div>
                   )}
                 </div>
 
                 <div className="pt-6 border-t border-white/5 space-y-4">
-                  <input type="text" placeholder="Alias do Perfil (Ex: Produção)" value={profileNameInput} onChange={e => setProfileNameInput(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] sm:text-xs focus:ring-1 focus:ring-cyan-500 outline-none" />
-                  <button onClick={() => { if (profileNameInput && credentials.appKey) { const newP = { id: Date.now().toString(), name: profileNameInput, ...credentials, createdAt: Date.now() }; setProfiles(p => [...p, newP]); setProfileNameInput(""); addLog('SISTEMA', 'success', `Perfil "${profileNameInput}" adicionado.`); } }} className="w-full py-3 sm:py-3.5 border border-white/10 rounded-xl text-[9px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-2"><Plus className="w-3.5 h-3.5" /> Save Profile</button>
+                  <input type="text" placeholder="Alias (Ex: Prod Master)" value={profileNameInput} onChange={e => setProfileNameInput(e.target.value)} className="w-full bg-[#000d0f] border border-white/5 rounded-2xl px-6 py-4 text-xs focus:ring-1 focus:ring-[#00f2ff] outline-none placeholder:text-slate-800 font-bold" />
+                  <button onClick={() => { if (profileNameInput && credentials.appKey) { const newP = { id: Date.now().toString(), name: profileNameInput, ...credentials, createdAt: Date.now() }; setProfiles(p => [...p, newP]); setProfileNameInput(""); addLog('SISTEMA', 'success', `Perfil "${profileNameInput}" salvo localmente.`); } }} className="w-full py-4 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/5 transition-all flex items-center justify-center gap-3 active:scale-95"><Plus className="w-4 h-4 text-[#00f2ff]" /> Deploy Profile</button>
                 </div>
 
                 <div className="pt-4 flex flex-col items-center gap-4">
-                  <button onClick={handleClearAppData} className="flex items-center gap-2 text-[8px] font-bold text-red-500/40 hover:text-red-500 uppercase tracking-widest transition-all">
-                    <Trash2 className="w-3 h-3" /> Force Secure Reset
+                  <button onClick={handleClearAppData} className="flex items-center gap-2 text-[9px] font-black text-red-500/40 hover:text-red-500 uppercase tracking-widest transition-all">
+                    <Trash2 className="w-4 h-4" /> Reset Environmental Data
                   </button>
                 </div>
               </div>
             </div>
-            <div className="p-6 sm:p-8 bg-black/40 flex gap-4">
-              <button onClick={() => setShowSettings(false)} className="flex-1 py-3 sm:py-4 text-[10px] text-slate-400 font-bold hover:text-white transition-colors uppercase tracking-widest">Cancel</button>
-              <button onClick={saveCredentials} className="flex-1 py-3 sm:py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl sm:rounded-2xl text-[10px] font-bold shadow-xl transition-all active:scale-95 uppercase tracking-widest">Apply Configuration</button>
+            <div className="p-8 sm:p-10 bg-black/40 flex gap-4">
+              <button onClick={() => setShowSettings(false)} className="flex-1 py-4 text-[11px] text-slate-500 font-black hover:text-white transition-colors uppercase tracking-[0.2em]">Close</button>
+              <button onClick={saveCredentials} className="flex-1 py-4 bg-gradient-to-r from-[#004b57] to-[#00f2ff] text-[#000d0f] rounded-2xl text-[11px] font-black shadow-2xl transition-all active:scale-95 uppercase tracking-[0.2em]">Sync & Save</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* History Modal */}
+      {/* History Modal - Refined */}
       {showHistoryModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6 bg-[#001c22]/98 backdrop-blur-3xl animate-in fade-in duration-300">
-          <div className="bg-slate-900 border border-white/10 rounded-2xl sm:rounded-[2.5rem] w-full max-w-3xl max-h-[85vh] overflow-hidden shadow-2xl flex flex-col transform animate-in zoom-in duration-300">
-            <div className="p-6 sm:p-8 border-b border-white/5 flex items-center justify-between bg-black/20 shrink-0">
-              <div className="flex items-center gap-3 truncate mr-2">
-                <History className="w-5 h-5 text-cyan-500 shrink-0" />
-                <h2 className="text-lg sm:text-xl font-bold tracking-tight truncate">System Logs</h2>
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6 bg-[#000d0f]/98 backdrop-blur-3xl animate-in fade-in duration-300">
+          <div className="bg-[#00151a] border border-white/10 rounded-[3rem] w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] flex flex-col transform animate-in zoom-in duration-300">
+            <div className="p-8 sm:p-10 border-b border-white/5 flex items-center justify-between bg-black/20 shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/5 rounded-2xl"><History className="w-6 h-6 text-[#00f2ff]" /></div>
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tighter">Event Explorer</h2>
+                  <p className="text-[10px] text-slate-600 uppercase tracking-widest font-black">Environmental logs</p>
+                </div>
               </div>
-              <button onClick={() => setShowHistoryModal(false)} className="text-slate-500 hover:text-white transition-colors bg-white/5 p-1.5 rounded-full shrink-0"><X className="w-5 h-5" /></button>
+              <button onClick={() => setShowHistoryModal(false)} className="text-slate-600 hover:text-white transition-colors bg-white/5 p-2 rounded-2xl active:scale-90"><X className="w-6 h-6" /></button>
             </div>
-            <div className="p-4 sm:p-6 bg-black/10 border-b border-white/5 flex flex-col md:flex-row gap-4 shrink-0">
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-                <input type="text" placeholder="Search events..." value={logSearchQuery} onChange={(e) => setLogSearchQuery(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-xl pl-11 pr-4 py-2.5 text-xs sm:text-sm focus:ring-1 focus:ring-cyan-500 outline-none" />
+            
+            <div className="p-6 sm:p-10 bg-black/20 border-b border-white/5 flex flex-col md:flex-row gap-6 shrink-0">
+              <div className="relative flex-1 group">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-[#00f2ff] transition-colors" />
+                <input type="text" placeholder="Filter memory trace..." value={logSearchQuery} onChange={(e) => setLogSearchQuery(e.target.value)} className="w-full bg-[#000d0f] border border-white/5 rounded-2xl pl-16 pr-6 py-4 text-sm focus:ring-1 focus:ring-[#00f2ff] outline-none font-bold" />
               </div>
-              <div className="flex items-center bg-black/30 border border-white/10 rounded-xl p-1 min-w-0 overflow-x-auto no-scrollbar">
+              <div className="flex items-center bg-[#000d0f] border border-white/5 rounded-2xl p-1.5 shadow-inner min-w-[320px]">
                 {(['all', 'success', 'error', 'system'] as const).map((status) => (
-                  <button key={status} onClick={() => setLogFilterStatus(status as LogFilterStatus)} className={`flex-1 min-w-[50px] py-1.5 sm:py-2 rounded-lg text-[8px] font-bold uppercase tracking-widest transition-all whitespace-nowrap px-3 ${logFilterStatus === status ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                  <button key={status} onClick={() => setLogFilterStatus(status as LogFilterStatus)} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all px-4 whitespace-nowrap ${logFilterStatus === status ? 'bg-gradient-to-r from-[#004b57] to-[#00f2ff] text-[#000d0f] shadow-lg' : 'text-slate-600 hover:text-slate-300'}`}>
                     {status}
                   </button>
                 ))}
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-3 custom-scrollbar bg-black/5 min-h-0">
+
+            <div className="flex-1 overflow-y-auto p-6 sm:p-10 space-y-4 custom-scrollbar bg-black/10">
               {filteredLogs.length > 0 ? filteredLogs.map(log => (
-                <div key={log.id} className="bg-white/5 border border-white/5 p-4 rounded-2xl group hover:border-cyan-500/30 transition-all hover:bg-white/[0.07] min-w-0 shadow-sm">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2 truncate">
-                      <div className={`w-1.5 h-1.5 rounded-full ${log.status === 'success' ? 'bg-emerald-500' : log.status === 'error' ? 'bg-red-500' : 'bg-cyan-500'}`} />
-                      <span className="text-[9px] font-mono font-black text-slate-300 uppercase truncate">{log.method}</span>
+                <div key={log.id} className="bg-white/5 border border-white/5 p-6 rounded-3xl group hover:border-[#00f2ff33] transition-all hover:bg-white/[0.08] shadow-sm flex items-start gap-6">
+                  <div className={`mt-1.5 w-3 h-3 rounded-full shrink-0 ${log.status === 'success' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' : log.status === 'error' ? 'bg-red-500' : 'bg-[#00f2ff]'}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[11px] font-mono font-black text-white uppercase tracking-tight">{log.method}</span>
+                      <span className="text-[10px] font-mono text-slate-600 bg-[#000d0f] px-3 py-1 rounded-full">{new Date(log.timestamp).toLocaleString()}</span>
                     </div>
-                    <span className="text-[8px] font-mono text-slate-600 bg-black/20 px-2 py-1 rounded-full shrink-0">{log.timestamp instanceof Date ? log.timestamp.toLocaleString() : new Date(log.timestamp).toLocaleString()}</span>
+                    <p className={`text-[12px] leading-relaxed font-medium ${log.status === 'error' ? 'text-red-400/80' : 'text-slate-500'}`}>{log.message}</p>
                   </div>
-                  <p className={`text-[10px] sm:text-xs leading-relaxed break-words ${log.status === 'error' ? 'text-red-400/80' : 'text-slate-500'}`}>{log.message}</p>
                 </div>
               )) : (
-                <div className="h-full flex flex-col items-center justify-center opacity-10 py-12">
-                  <Database className="w-12 h-12 mb-4" />
-                  <p className="text-[10px] font-bold uppercase tracking-[0.5em]">Clear Records</p>
+                <div className="h-full flex flex-col items-center justify-center opacity-10 py-20">
+                  <LogoIcon />
+                  <p className="mt-8 text-[12px] font-black uppercase tracking-[0.6em] text-white">No traces found</p>
                 </div>
               )}
             </div>
-            <div className="p-4 sm:p-6 border-t border-white/5 flex items-center justify-between bg-black/40 shrink-0">
-              <span className="text-[8px] sm:text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em]">{filteredLogs.length} Records</span>
-              <button onClick={() => setLogs([])} className="flex items-center gap-2 text-[9px] font-bold text-red-500/60 hover:text-red-400 uppercase tracking-widest transition-colors"><Trash2 className="w-3.5 h-3.5" /> Purge Logs</button>
+
+            <div className="p-8 sm:p-10 border-t border-white/5 flex items-center justify-between bg-black/40 shrink-0">
+              <span className="text-[10px] font-black text-slate-700 uppercase tracking-[0.4em]">{filteredLogs.length} Records found</span>
+              <button onClick={() => setLogs([])} className="flex items-center gap-3 text-[10px] font-black text-red-500/60 hover:text-red-400 uppercase tracking-[0.3em] transition-all active:scale-95"><Trash2 className="w-5 h-5" /> Purge Memory</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* FOOTER */}
-      <footer className="py-12 sm:py-20 text-center border-t border-white/5 mt-auto bg-[#001c22] relative overflow-hidden shrink-0">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-px bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent" />
+      {/* FOOTER - Petroleum Style */}
+      <footer className="py-20 text-center border-t border-white/5 mt-auto relative overflow-hidden bg-[#000d0f] shrink-0">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[90%] h-px bg-gradient-to-r from-transparent via-[#00f2ff]/30 to-transparent" />
         
-        <div className="flex flex-col items-center gap-6 sm:gap-8 relative z-10 px-4">
-          <div className="flex items-center justify-center gap-4 sm:gap-6">
-            <a href="https://www.instagram.com/daniloborgesf/" target="_blank" rel="noopener noreferrer" className="p-2.5 sm:p-3 bg-white/5 hover:bg-cyan-500/10 rounded-xl sm:rounded-2xl border border-white/5 hover:border-cyan-500/30 text-slate-500 hover:text-cyan-400 transition-all hover:-translate-y-1 active:scale-90">
-              <Instagram className="w-4 h-4 sm:w-5 h-5" />
+        <div className="flex flex-col items-center gap-10 relative z-10 px-8">
+          <div className="flex items-center justify-center gap-8">
+            <a href="https://www.instagram.com/daniloborgesf/" target="_blank" className="p-4 bg-white/5 hover:bg-[#00f2ff11] rounded-[1.5rem] border border-white/5 hover:border-[#00f2ff22] text-slate-600 hover:text-[#00f2ff] transition-all hover:-translate-y-2">
+              <Instagram className="w-6 h-6" />
             </a>
-            <a href="https://github.com/daniloborgesf" target="_blank" rel="noopener noreferrer" className="p-2.5 sm:p-3 bg-white/5 hover:bg-cyan-500/10 rounded-xl sm:rounded-2xl border border-white/5 hover:border-cyan-500/30 text-slate-500 hover:text-cyan-400 transition-all hover:-translate-y-1 active:scale-90">
-              <Github className="w-4 h-4 sm:w-5 h-5" />
+            <a href="https://github.com/daniloborgesf" target="_blank" className="p-4 bg-white/5 hover:bg-[#00f2ff11] rounded-[1.5rem] border border-white/5 hover:border-[#00f2ff22] text-slate-600 hover:text-[#00f2ff] transition-all hover:-translate-y-2">
+              <Github className="w-6 h-6" />
             </a>
-            <a href="https://www.linkedin.com/in/daniloborgesf/" target="_blank" rel="noopener noreferrer" className="p-2.5 sm:p-3 bg-white/5 hover:bg-cyan-500/10 rounded-xl sm:rounded-2xl border border-white/5 hover:border-cyan-500/30 text-slate-500 hover:text-cyan-400 transition-all hover:-translate-y-1 active:scale-90">
-              <Linkedin className="w-4 h-4 sm:w-5 h-5" />
+            <a href="https://www.linkedin.com/in/daniloborgesf/" target="_blank" className="p-4 bg-white/5 hover:bg-[#00f2ff11] rounded-[1.5rem] border border-white/5 hover:border-[#00f2ff22] text-slate-600 hover:text-[#00f2ff] transition-all hover:-translate-y-2">
+              <Linkedin className="w-6 h-6" />
             </a>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-center gap-3 sm:gap-4 text-slate-600 text-[8px] sm:text-[10px] uppercase tracking-[0.4em] font-black">
-              <ShieldCheck className="w-4 h-4 text-cyan-500" />
+          <div className="space-y-4">
+            <div className="flex items-center justify-center gap-4 text-slate-600 text-[10px] uppercase tracking-[0.5em] font-black">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#00f2ff] animate-pulse" />
               <span>Omie API Ecosystem • Danilo Borges</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-[#00f2ff] animate-pulse" />
             </div>
-            <p className="text-[8px] sm:text-[9px] text-slate-700 max-w-xs sm:max-w-md leading-relaxed uppercase tracking-tighter font-medium mx-auto">
-              Desenvolvido para máxima integridade e segurança no ecossistema ERP.
+            <p className="text-[9px] text-slate-700 max-w-lg leading-relaxed uppercase tracking-tighter font-black mx-auto">
+              Desenvolvido com tecnologia de ponta para exploração segura de dados corporativos. 
+              Copyright © 2025.
             </p>
           </div>
         </div>

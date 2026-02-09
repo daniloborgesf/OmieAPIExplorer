@@ -14,12 +14,27 @@ export const OMIE_SERVICES: ServiceDefinition[] = [
         apenas_importado_api: 'N'
       }
     ]
+  },
+  {
+    name: 'Vendas - Pedidos',
+    endpoint: 'https://app.omie.com.br/api/v1/vendas/pedido/',
+    call: 'ListarPedidosVenda',
+    description: 'Lista pedidos de venda do Omie ERP.',
+    defaultParam: [
+      {
+        pagina: 1,
+        registros_por_pagina: 20,
+        apenas_importado_api: 'N'
+      }
+    ]
   }
 ];
 
 export const THEME_COLORS = {
-  petroleum: '#001c22',
-  accent: '#07575B',
-  surface: '#003B46',
-  text: '#66A5AD'
+  petroleumDark: '#000d0f',
+  petroleumLight: '#002d35',
+  cyanAccent: '#00f2ff',
+  success: '#10b981',
+  error: '#ef4444',
+  textDim: '#64748b'
 };
