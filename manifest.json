@@ -1,0 +1,19 @@
+
+{
+  "name": "Omie API Explorer",
+  "short_name": "OmieExplorer",
+  "description": "Explorador seguro e performático para o ecossistema de APIs Omie ERP.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#001c22",
+  "theme_color": "#001c22",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/906/906341.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
