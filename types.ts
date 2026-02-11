@@ -6,10 +6,12 @@ export interface OmieCredentials {
   proxyUrl?: string;
 }
 
-export interface CredentialProfile extends OmieCredentials {
+// Added missing CredentialProfile interface required for profile management and system maintenance
+export interface CredentialProfile {
   id: string;
   name: string;
-  createdAt: number;
+  appKey: string;
+  appSecret: string;
 }
 
 export interface OmieApiResponse<T = any> {
@@ -20,6 +22,7 @@ export interface OmieApiResponse<T = any> {
   conta_receber_cadastro?: T[];
   conta_pagar_cadastro?: T[];
   clientes_cadastro?: T[];
+  vendas_nf_autorizadas?: T[];
   error?: {
     code: string;
     description: string;
@@ -36,6 +39,14 @@ export interface ContaFinanceira {
   valor_documento: number;
   status_titulo: string;
   nome_cliente_fornecedor: string;
+  codigo_cliente_fornecedor: number;
+}
+
+export interface Cliente {
+  codigo_cliente_omie: number;
+  nome_fantasia: string;
+  razao_social: string;
+  cnpj_cpf: string;
 }
 
 export interface ConnectionLog {
@@ -47,10 +58,7 @@ export interface ConnectionLog {
   details?: string;
 }
 
-export interface ServiceDefinition {
-  name: string;
-  endpoint: string;
-  call: string;
-  description: string;
-  defaultParam?: any;
+export interface DateRange {
+  start: string;
+  end: string;
 }
