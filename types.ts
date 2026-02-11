@@ -13,7 +13,13 @@ export interface CredentialProfile extends OmieCredentials {
 }
 
 export interface OmieApiResponse<T = any> {
-  result?: T;
+  pagina?: number;
+  total_de_paginas?: number;
+  registros?: number;
+  total_de_registros?: number;
+  conta_receber_cadastro?: T[];
+  conta_pagar_cadastro?: T[];
+  clientes_cadastro?: T[];
   error?: {
     code: string;
     description: string;
@@ -22,6 +28,14 @@ export interface OmieApiResponse<T = any> {
   };
   faultstring?: string;
   faultcode?: string;
+}
+
+export interface ContaFinanceira {
+  codigo_lancamento: number;
+  data_vencimento: string;
+  valor_documento: number;
+  status_titulo: string;
+  nome_cliente_fornecedor: string;
 }
 
 export interface ConnectionLog {
@@ -39,5 +53,3 @@ export interface ServiceDefinition {
   description: string;
   defaultParam?: any;
 }
-
-export type LogFilterStatus = 'all' | 'success' | 'error' | 'pending' | 'system';
