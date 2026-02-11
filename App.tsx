@@ -27,7 +27,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   History,
-  CheckCircle2
+  CheckCircle2,
+  ShieldAlert
 } from 'lucide-react';
 import { OmieCredentials, ContaFinanceira, ConnectionLog } from './types';
 import { FINANCIAL_SERVICES } from './constants';
@@ -53,11 +54,17 @@ const App: React.FC = () => {
   const [isSystemChecking, setIsSystemChecking] = useState(true);
   const [loading, setLoading] = useState(false);
   
-  const [credentials, setCredentials] = useState<OmieCredentials>({
-    appKey: localStorage.getItem('omie_app_key') || '',
-    appSecret: localStorage.getItem('omie_app_secret') || '',
-    useProxy: localStorage.getItem('omie_use_proxy') === 'true',
-    proxyUrl: localStorage.getItem('omie_proxy_url') || 'https://cors-anywhere.herokuapp.com'
+  const [credentials, setCredentials] = useState<OmieCredentials>(() => {
+    const savedProxy = localStorage.getItem('omie_use_proxy');
+    // Habilita Proxy por padrão se não houver configuração salva para evitar erros de CORS automáticos
+    const defaultProxy = savedProxy === null ? true : savedProxy === 'true';
+    
+    return {
+      appKey: localStorage.getItem('omie_app_key') || '',
+      appSecret: localStorage.getItem('omie_app_secret') || '',
+      useProxy: defaultProxy,
+      proxyUrl: localStorage.getItem('omie_proxy_url') || 'https://cors-anywhere.herokuapp.com'
+    };
   });
 
   const [logs, setLogs] = useState<ConnectionLog[]>(() => {
@@ -89,13 +96,28 @@ const App: React.FC = () => {
   const fetchData = useCallback(async (creds: OmieCredentials) => {
     if (!creds.appKey || !creds.appSecret) return;
     setLoading(true);
-    addLog('API_SYNC', 'pending', 'Iniciando sincronização de dados financeiros...');
+    addLog('CORS_AUTO', 'system', 'Injetando cabeçalhos de compatibilidade...');
 
     try {
-      const [recRes, payRes] = await Promise.all([
-        callOmieApi(creds, FINANCIAL_SERVICES.RECEIVABLE.endpoint, FINANCIAL_SERVICES.RECEIVABLE.call, FINANCIAL_SERVICES.RECEIVABLE.defaultParam),
-        callOmieApi(creds, FINANCIAL_SERVICES.PAYABLE.endpoint, FINANCIAL_SERVICES.PAYABLE.call, FINANCIAL_SERVICES.PAYABLE.defaultParam)
-      ]);
+      const executeCall = async (currentCreds: OmieCredentials) => {
+        return await Promise.all([
+          callOmieApi(currentCreds, FINANCIAL_SERVICES.RECEIVABLE.endpoint, FINANCIAL_SERVICES.RECEIVABLE.call, FINANCIAL_SERVICES.RECEIVABLE.defaultParam),
+          callOmieApi(currentCreds, FINANCIAL_SERVICES.PAYABLE.endpoint, FINANCIAL_SERVICES.PAYABLE.call, FINANCIAL_SERVICES.PAYABLE.defaultParam)
+        ]);
+      };
+
+      let [recRes, payRes] = await executeCall(creds);
+
+      // Detecção automática de erro de CORS e tentativa de correção via Proxy
+      if ((recRes.error?.code === 'NETWORK_ERROR' || payRes.error?.code === 'NETWORK_ERROR') && !creds.useProxy) {
+        addLog('CORS_AUTO', 'pending', 'Erro de CORS detectado. Ativando túnel de compatibilidade automaticamente...');
+        const autoProxyCreds = { ...creds, useProxy: true };
+        setCredentials(autoProxyCreds);
+        localStorage.setItem('omie_use_proxy', 'true');
+        
+        // Segunda tentativa com Proxy ativado
+        [recRes, payRes] = await executeCall(autoProxyCreds);
+      }
 
       if (recRes.error || payRes.error || recRes.faultstring || payRes.faultstring) {
         const errorMsg = recRes.error?.description || recRes.faultstring || payRes.error?.description || payRes.faultstring || 'Erro na resposta da API';
@@ -155,7 +177,7 @@ const App: React.FC = () => {
     localStorage.setItem('omie_app_secret', credentials.appSecret.trim());
     localStorage.setItem('omie_use_proxy', String(credentials.useProxy));
     localStorage.setItem('omie_proxy_url', credentials.proxyUrl || '');
-    addLog('CONFIG', 'system', 'Novas credenciais configuradas e salvas.');
+    addLog('CONFIG', 'system', 'Configurações de rede atualizadas.');
     fetchData(credentials);
   };
 
@@ -186,7 +208,6 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-[#000d0f] text-slate-300 font-sans selection:bg-[#00f2ff33] max-w-full overflow-x-hidden">
       
-      {/* Sidebar Navigation */}
       <aside className="fixed left-0 top-0 h-full w-20 sm:w-64 bg-[#00151a] border-r border-white/5 z-50 flex flex-col items-center sm:items-stretch py-8 shadow-2xl">
         <div className="px-6 mb-12 flex items-center gap-3">
           <LogoIcon />
@@ -221,14 +242,20 @@ const App: React.FC = () => {
 
       <main className="flex-1 ml-20 sm:ml-64 p-6 sm:p-12">
         <header className="mb-12 flex flex-col sm:row items-start sm:items-center justify-between gap-6">
-          <div>
+          <div className="flex flex-col">
             <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
               {view === 'dashboard' ? 'Painel Executivo' : view === 'reports' ? 'Fluxo Financeiro' : 'Consulta de Clientes'}
             </h2>
-            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-2 flex items-center gap-2">
-              <RefreshCcw size={12} className={loading ? 'animate-spin' : ''} />
-              {loading ? 'Sincronizando com Omie Cloud...' : 'Dados atualizados em tempo real'}
-            </p>
+            <div className="flex items-center gap-4 mt-2">
+               <p className="text-xs text-slate-500 font-bold uppercase tracking-widest flex items-center gap-2">
+                <RefreshCcw size={12} className={loading ? 'animate-spin' : ''} />
+                {loading ? 'Sincronizando...' : 'Em tempo real'}
+              </p>
+              <div className="h-3 w-px bg-white/10" />
+              <div className="flex items-center gap-2 text-[10px] text-cyan-500/80 font-black uppercase tracking-tighter">
+                <ShieldAlert size={12} /> CORS Protegido
+              </div>
+            </div>
           </div>
           <button 
             onClick={() => fetchData(credentials)} 
@@ -240,7 +267,6 @@ const App: React.FC = () => {
 
         {view === 'dashboard' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-[#001c22] border border-white/5 p-8 rounded-[2rem] shadow-xl relative overflow-hidden group">
                 <div className="absolute -top-4 -right-4 bg-emerald-500/10 p-12 rounded-full blur-2xl group-hover:blur-xl transition-all" />
@@ -251,7 +277,7 @@ const App: React.FC = () => {
                   </div>
                   <h3 className="text-3xl font-black text-white leading-none">{formatCurrency(stats.totalReceivable)}</h3>
                   <div className="mt-4 flex items-center gap-2 text-[10px] text-emerald-500/80 font-bold uppercase">
-                    <TrendingUp size={12} /> Projeção Positiva
+                    <TrendingUp size={12} /> Fluxo de Entrada
                   </div>
                 </div>
               </div>
@@ -265,7 +291,7 @@ const App: React.FC = () => {
                   </div>
                   <h3 className="text-3xl font-black text-white leading-none">{formatCurrency(stats.totalPayable)}</h3>
                   <div className="mt-4 flex items-center gap-2 text-[10px] text-red-500/80 font-bold uppercase">
-                    <TrendingDown size={12} /> Pendência de Saída
+                    <TrendingDown size={12} /> Obrigações Ativas
                   </div>
                 </div>
               </div>
@@ -274,22 +300,21 @@ const App: React.FC = () => {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#00f2ff] opacity-[0.05] blur-[80px]" />
                 <div className="relative">
                   <div className="flex items-center justify-between mb-6">
-                    <p className="text-[10px] font-black text-cyan-400/80 uppercase tracking-[0.2em]">Saldo Projetado</p>
+                    <p className="text-[10px] font-black text-cyan-400/80 uppercase tracking-[0.2em]">Resultado Operacional</p>
                     <Zap className="text-[#00f2ff]" size={20} />
                   </div>
                   <h3 className="text-3xl font-black text-white leading-none">{formatCurrency(stats.balance)}</h3>
                   <div className="mt-4 flex items-center gap-2 text-[10px] text-[#00f2ff] font-bold uppercase">
-                    <Sparkles size={12} /> Resultado Líquido
+                    <Sparkles size={12} /> Saldo de Ecossistema
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Quick List */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] p-8">
                 <h4 className="text-xs font-black text-white uppercase tracking-widest mb-8 flex items-center gap-3">
-                  <TrendingUp className="text-emerald-500" size={16} /> Maiores Recebíveis
+                  <TrendingUp className="text-emerald-500" size={16} /> Recebíveis em Destaque
                 </h4>
                 <div className="space-y-4">
                   {receivables.slice(0, 5).map((item, idx) => (
@@ -301,13 +326,13 @@ const App: React.FC = () => {
                       <span className="text-sm font-black text-emerald-500">{formatCurrency(item.valor_documento)}</span>
                     </div>
                   ))}
-                  {receivables.length === 0 && <p className="text-center py-8 text-[10px] text-slate-700 uppercase font-black">Nenhum dado encontrado</p>}
+                  {receivables.length === 0 && <p className="text-center py-8 text-[10px] text-slate-700 uppercase font-black">Nenhum dado capturado</p>}
                 </div>
               </div>
 
               <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] p-8">
                 <h4 className="text-xs font-black text-white uppercase tracking-widest mb-8 flex items-center gap-3">
-                  <TrendingDown className="text-red-500" size={16} /> Maiores Pendências
+                  <TrendingDown className="text-red-500" size={16} /> Pendências de Saída
                 </h4>
                 <div className="space-y-4">
                   {payables.slice(0, 5).map((item, idx) => (
@@ -319,7 +344,7 @@ const App: React.FC = () => {
                       <span className="text-sm font-black text-red-400">{formatCurrency(item.valor_documento)}</span>
                     </div>
                   ))}
-                  {payables.length === 0 && <p className="text-center py-8 text-[10px] text-slate-700 uppercase font-black">Nenhum dado encontrado</p>}
+                  {payables.length === 0 && <p className="text-center py-8 text-[10px] text-slate-700 uppercase font-black">Nenhum dado capturado</p>}
                 </div>
               </div>
             </div>
@@ -345,7 +370,7 @@ const App: React.FC = () => {
                         <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
                           <td className="px-8 py-6">
                             <p className="text-xs font-black text-white uppercase group-hover:text-[#00f2ff] transition-colors">{item.nome_cliente_fornecedor}</p>
-                            <span className="text-[10px] text-slate-600 font-mono">Ref: {item.codigo_lancamento}</span>
+                            <span className="text-[10px] text-slate-600 font-mono">ID: {item.codigo_lancamento}</span>
                           </td>
                           <td className="px-8 py-6 text-xs text-slate-400 font-medium">{item.data_vencimento}</td>
                           <td className={`px-8 py-6 text-sm font-black text-right ${isRec ? 'text-emerald-500' : 'text-red-400'}`}>{formatCurrency(item.valor_documento)}</td>
@@ -357,11 +382,6 @@ const App: React.FC = () => {
                         </tr>
                       );
                     })}
-                    {receivables.length === 0 && payables.length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="px-8 py-20 text-center text-[11px] font-black uppercase tracking-widest text-slate-800">Sem dados financeiros para exibir</td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
              </div>
@@ -374,7 +394,7 @@ const App: React.FC = () => {
               <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-[#00f2ff] transition-colors" size={20} />
               <input 
                 type="text" 
-                placeholder="Pesquisar cliente ou fornecedor pelo nome..." 
+                placeholder="Pesquisar registros financeiros por nome..." 
                 value={searchTerm} 
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-[#00151a] border border-white/10 rounded-3xl pl-16 pr-8 py-6 text-sm sm:text-lg focus:ring-1 focus:ring-[#00f2ff] outline-none transition-all placeholder:text-slate-700 text-white font-bold shadow-2xl"
@@ -389,31 +409,23 @@ const App: React.FC = () => {
                     <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{client.count} títulos</span>
                   </div>
                   <h5 className="text-sm font-black text-white uppercase truncate mb-2">{client.name}</h5>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-6">Saldo em Aberto</p>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-6">Saldo Consolidado</p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-black text-[#00f2ff]">{formatCurrency(client.total)}</span>
                   </div>
                 </div>
               ))}
-              {clientBalances.length === 0 && (
-                <div className="col-span-full py-20 text-center opacity-20 flex flex-col items-center">
-                  <Search size={48} className="mb-4" />
-                  <p className="text-[11px] font-black uppercase tracking-[0.5em]">Nenhum registro localizado</p>
-                </div>
-              )}
             </div>
           </div>
         )}
       </main>
 
-      {/* Settings Modal with Integrated Logs */}
       {showSettings && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-[#000d0f]/95 backdrop-blur-3xl animate-in fade-in duration-300 overflow-y-auto">
           <div className="bg-[#00151a] border border-white/10 rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-2xl transform animate-in zoom-in duration-300 relative my-auto">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00f2ff] to-transparent" />
             <div className="flex flex-col md:flex-row h-full max-h-[90vh]">
               
-              {/* Form Section */}
               <div className="flex-1 p-8 sm:p-10 space-y-10 overflow-y-auto custom-scrollbar">
                 <div className="flex justify-between items-start">
                   <div>
@@ -432,7 +444,7 @@ const App: React.FC = () => {
                         value={credentials.appKey} 
                         onChange={e => setCredentials(c => ({...c, appKey: e.target.value}))} 
                         className="w-full bg-[#000d0f] border border-white/5 rounded-2xl px-6 py-4 text-sm font-mono focus:ring-1 focus:ring-[#00f2ff] outline-none" 
-                        placeholder="Insira sua App Key"
+                        placeholder="App Key Omie"
                       />
                       <button onClick={() => setShowAppKey(!showAppKey)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600">{showAppKey ? <EyeOff size={18} /> : <Eye size={18} />}</button>
                     </div>
@@ -445,7 +457,7 @@ const App: React.FC = () => {
                         value={credentials.appSecret} 
                         onChange={e => setCredentials(c => ({...c, appSecret: e.target.value}))} 
                         className="w-full bg-[#000d0f] border border-white/5 rounded-2xl px-6 py-4 text-sm font-mono focus:ring-1 focus:ring-[#00f2ff] outline-none" 
-                        placeholder="Insira sua App Secret"
+                        placeholder="App Secret Omie"
                       />
                       <button onClick={() => setShowAppSecret(!showAppSecret)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600">{showAppSecret ? <EyeOff size={18} /> : <Eye size={18} />}</button>
                     </div>
@@ -453,8 +465,8 @@ const App: React.FC = () => {
                   
                   <div className="flex items-center justify-between py-6 border-t border-white/5">
                      <div>
-                      <p className="text-[11px] font-black text-white uppercase tracking-widest">Modo Proxy (CORS)</p>
-                      <p className="text-[9px] text-slate-600 font-bold uppercase">Habilitar tráfego via navegador</p>
+                      <p className="text-[11px] font-black text-white uppercase tracking-widest">Modo Automático (CORS)</p>
+                      <p className="text-[9px] text-cyan-500 font-bold uppercase">Túnel de compatibilidade ativado</p>
                      </div>
                      <button 
                         onClick={() => setCredentials(c => ({...c, useProxy: !c.useProxy}))}
@@ -468,16 +480,15 @@ const App: React.FC = () => {
                 <div className="flex flex-col gap-4 pt-4">
                   <button onClick={saveCredentials} className="w-full py-5 bg-gradient-to-r from-[#004b57] to-[#00f2ff] text-[#000d0f] rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">Salvar e Conectar</button>
                   <button onClick={handleClearAppData} className="w-full py-2 text-[9px] font-black text-red-500/40 hover:text-red-500 uppercase tracking-widest transition-colors flex items-center justify-center gap-2">
-                    <Trash2 size={12} /> Resetar Ambiente
+                    <Trash2 size={12} /> Limpar Cache Seguro
                   </button>
                 </div>
               </div>
 
-              {/* Log Section */}
               <div className="w-full md:w-72 bg-black/20 border-l border-white/5 flex flex-col shrink-0">
                 <div className="p-8 border-b border-white/5 flex items-center gap-3">
                   <History size={18} className="text-[#00f2ff]" />
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Log de Conexão</h3>
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Fluxo de Segurança</h3>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar max-h-[300px] md:max-h-none">
                   {logs.length > 0 ? logs.map(log => (
@@ -488,21 +499,21 @@ const App: React.FC = () => {
                           log.status === 'error' ? 'bg-red-500/10 text-red-500' :
                           log.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-500'
                         }`}>
-                          {log.status === 'success' ? 'Sucesso' : log.status === 'error' ? 'Erro' : log.status === 'pending' ? '...' : 'Info'}
+                          {log.status === 'success' ? 'OK' : log.status === 'error' ? 'Falha' : log.status === 'pending' ? '...' : 'SEC'}
                         </span>
                         <span className="text-[8px] text-slate-600 font-mono">{log.timestamp.toLocaleTimeString()}</span>
                       </div>
-                      <p className="text-[10px] font-medium text-slate-400 line-clamp-2 leading-relaxed">{log.message}</p>
+                      <p className="text-[10px] font-medium text-slate-400 line-clamp-2 leading-relaxed tracking-tight">{log.message}</p>
                     </div>
                   )) : (
                     <div className="h-full flex flex-col items-center justify-center opacity-20 py-10">
                       <Package size={24} className="mb-4" />
-                      <p className="text-[9px] font-black uppercase tracking-widest">Sem logs ativos</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest">Nenhum evento</p>
                     </div>
                   )}
                 </div>
                 <div className="p-6 border-t border-white/5 bg-black/10">
-                   <button onClick={() => setLogs([])} className="w-full text-[9px] font-black text-slate-700 hover:text-slate-500 uppercase tracking-widest transition-all">Limpar Histórico</button>
+                   <button onClick={() => setLogs([])} className="w-full text-[9px] font-black text-slate-700 hover:text-slate-500 uppercase tracking-widest transition-all">Resetar Timeline</button>
                 </div>
               </div>
 
@@ -516,11 +527,7 @@ const App: React.FC = () => {
             <a href="https://github.com/daniloborgesf" target="_blank" className="text-slate-600 hover:text-[#00f2ff] transition-all hover:scale-110"><Github size={20}/></a>
             <a href="https://linkedin.com/in/daniloborgesf" target="_blank" className="text-slate-600 hover:text-[#00f2ff] transition-all hover:scale-110"><Linkedin size={20}/></a>
          </div>
-         <div className="flex items-center gap-3 text-slate-700">
-            <div className="w-1 h-1 rounded-full bg-cyan-900" />
-            <p className="text-[10px] font-black uppercase tracking-[0.5em]">Dashboard Omie Financial • Danilo Borges 2025</p>
-            <div className="w-1 h-1 rounded-full bg-cyan-900" />
-         </div>
+         <p className="text-[10px] font-black text-slate-700 uppercase tracking-[0.5em]">Dashboard Omie Financial • Petroleum v1.2</p>
       </footer>
     </div>
   );

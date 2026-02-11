@@ -36,6 +36,7 @@ export const callOmieApi = async (
     param: sanitizeData(param)
   };
 
+  // Garante que a URL final utilize o Proxy se configurado (Habilitado por padrão para evitar CORS)
   const finalUrl = credentials.useProxy && credentials.proxyUrl 
     ? `${credentials.proxyUrl.replace(/\/$/, '')}/${endpoint}`
     : endpoint;
@@ -46,18 +47,19 @@ export const callOmieApi = async (
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest' // Importante para alguns proxies
+        'X-Requested-With': 'XMLHttpRequest' 
       },
       body: JSON.stringify(payload),
     });
 
     const contentType = response.headers.get("content-type");
     
+    // Tratamento específico para autorização de Proxy Heroku (cors-anywhere)
     if (response.status === 403 && !contentType?.includes("application/json")) {
       return {
         error: {
-          code: "403",
-          description: "Acesso Negado pelo Proxy. Você precisa clicar em 'Ativar Acesso Temporário' nas configurações para liberar o tráfego do navegador.",
+          code: "PROXY_AUTH_REQUIRED",
+          description: "O túnel CORS requer autorização. Clique no link 'Ativar Acesso Temporário' nas configurações.",
           referer: 'PROXY_BLOCK',
           fatal: true
         }
@@ -71,19 +73,18 @@ export const callOmieApi = async (
       return {
         error: {
           code: response.status.toString(),
-          description: `Resposta do Servidor: ${textError.substring(0, 150)}...`,
+          description: `Resposta inconsistente: ${textError.substring(0, 100)}...`,
           referer: 'HTTP_PROTOCOL',
           fatal: response.status >= 500
         }
       };
     }
   } catch (error: any) {
+    // Retorno de erro capturável pelo App.tsx para ativação automática de Proxy
     return {
       error: {
         code: 'NETWORK_ERROR',
-        description: credentials.useProxy 
-          ? `Falha na conexão via Proxy: ${error.message}. Verifique se o serviço de proxy está online.` 
-          : `CORS detectado. Ative o 'Modo de Compatibilidade (Proxy)' nas configurações.`,
+        description: error.message || 'Falha na comunicação de rede.',
         referer: 'BROWSER_CORS',
         fatal: true
       }
