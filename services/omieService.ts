@@ -29,6 +29,10 @@ export const callOmieApi = async (
   call: string,
   param: any
 ): Promise<OmieApiResponse> => {
+  if (!credentials.appKey || !credentials.appSecret) {
+    throw new Error("Credenciais Omie ausentes");
+  }
+
   const payload = {
     call,
     app_key: credentials.appKey.trim(),
@@ -36,10 +40,16 @@ export const callOmieApi = async (
     param: sanitizeData(param)
   };
 
-  // Garante que a URL final utilize o Proxy se configurado (Habilitado por padrão para evitar CORS)
-  const finalUrl = credentials.useProxy && credentials.proxyUrl 
-    ? `${credentials.proxyUrl.replace(/\/$/, '')}/${endpoint}`
-    : endpoint;
+  // Construção de URL ultra-segura para evitar "Invalid URL"
+  let finalUrl = endpoint;
+  if (credentials.useProxy && credentials.proxyUrl) {
+    const baseUrl = credentials.proxyUrl.endsWith('/') 
+      ? credentials.proxyUrl.slice(0, -1) 
+      : credentials.proxyUrl;
+    
+    // Se o proxyUrl for inválido, o browser lançará erro aqui, tratamos no catch
+    finalUrl = `${baseUrl}/${endpoint}`;
+  }
 
   try {
     const response = await fetch(finalUrl, {
@@ -54,38 +64,36 @@ export const callOmieApi = async (
 
     const contentType = response.headers.get("content-type");
     
-    // Tratamento específico para autorização de Proxy Heroku (cors-anywhere)
     if (response.status === 403 && !contentType?.includes("application/json")) {
       return {
         error: {
           code: "PROXY_AUTH_REQUIRED",
-          description: "O túnel CORS requer autorização. Clique no link 'Ativar Acesso Temporário' nas configurações.",
+          description: "O túnel CORS requer autorização. Tente acessar a URL do proxy diretamente uma vez para liberar.",
           referer: 'PROXY_BLOCK',
           fatal: true
         }
       };
     }
 
-    if (contentType && contentType.indexOf("application/json") !== -1) {
+    if (contentType && contentType.includes("application/json")) {
       return await response.json();
     } else {
       const textError = await response.text();
       return {
         error: {
           code: response.status.toString(),
-          description: `Resposta inconsistente: ${textError.substring(0, 100)}...`,
+          description: `Resposta inesperada (não-JSON): ${textError.substring(0, 200)}`,
           referer: 'HTTP_PROTOCOL',
           fatal: response.status >= 500
         }
       };
     }
   } catch (error: any) {
-    // Retorno de erro capturável pelo App.tsx para ativação automática de Proxy
     return {
       error: {
-        code: 'NETWORK_ERROR',
-        description: error.message || 'Falha na comunicação de rede.',
-        referer: 'BROWSER_CORS',
+        code: 'NETWORK_OR_URL_ERROR',
+        description: `Erro de Conexão: ${error.message}. Verifique a URL do Proxy ou bloqueios de CORS.`,
+        referer: 'OMIE_SERVICE',
         fatal: true
       }
     };

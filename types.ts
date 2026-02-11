@@ -44,6 +44,7 @@ export interface ConnectionLog {
   method: string;
   status: 'success' | 'error' | 'pending' | 'system';
   message: string;
+  details?: string;
 }
 
 export interface ServiceDefinition {
