@@ -93,16 +93,25 @@
 <body class="petroleum-gradient text-slate-300">
     <div id="root"></div>
     <script>
-        // Registro de Service Worker com Verificação de Caminho Relativo Robustos
+        // Registro de Service Worker otimizado para evitar erros de origem em ambientes de sandbox/preview
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                const swPath = window.location.pathname.endsWith('/') 
-                    ? window.location.pathname + 'service-worker.js'
-                    : window.location.pathname.split('/').slice(0, -1).join('/') + '/service-worker.js';
+                // Criamos a URL absoluta do worker baseada na localização atual da página
+                // Isso garante que o origin do script coincida com o origin da página.
+                const swUrl = new URL('./service-worker.js', window.location.href).href;
                 
-                navigator.serviceWorker.register('./service-worker.js', { scope: './' })
-                    .then(reg => console.log('SW Registered'))
-                    .catch(err => console.warn('SW Error:', err));
+                navigator.serviceWorker.register(swUrl, { scope: './' })
+                    .then(reg => {
+                        console.log('SW Registered successfully on origin:', new URL(reg.scope).origin);
+                    })
+                    .catch(err => {
+                        // Silenciamos avisos em ambientes onde Service Workers são restritos (como iframes de preview)
+                        if (err.name === 'SecurityError' || err.message.includes('origin')) {
+                            console.info('Service Worker indisponível neste ambiente (restrição de segurança/origem).');
+                        } else {
+                            console.warn('Falha ao registrar Service Worker:', err);
+                        }
+                    });
             });
         }
     </script>
